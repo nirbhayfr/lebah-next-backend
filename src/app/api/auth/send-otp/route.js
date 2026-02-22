@@ -7,6 +7,7 @@ import bcrypt from "bcryptjs";
 export async function POST(req) {
 	try {
 		await connectDB();
+
 		let { email } = await req.json();
 
 		if (!email) {
@@ -16,13 +17,18 @@ export async function POST(req) {
 		}
 
 		email = email.toLowerCase().trim();
+
 		let user = await User.findOne({ email });
+
 		if (!user) {
 			user = new User({ email });
 		}
 
-		const otp = Math.floor(100000 + Math.random() * 900000).toString();
-		if (user?.otpExpiry && user.otpExpiry > Date.now()) {
+		// Proper date comparison
+		if (
+			user.otpExpiry &&
+			new Date(user.otpExpiry).getTime() > Date.now()
+		) {
 			return Response.json(
 				{
 					status: "error",
@@ -32,9 +38,15 @@ export async function POST(req) {
 			);
 		}
 
+		const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
 		user.otp = await bcrypt.hash(otp, 10);
 		user.otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
+
 		await user.save();
+
+		console.log("Saved OTP HASH:", user.otp); // debug
+
 		await sendOtpEmail(email, otp);
 
 		return Response.json(
