@@ -37,13 +37,21 @@ export async function POST(req) {
 }
 
 // ✅ GET ALL CATEGORIES (GET)
-export async function GET() {
+export async function GET(request) {
 	try {
 		await connectDB();
 
-		const categories = await Category.find().populate("superCategory");
+		const { searchParams } = new URL(request.url);
+		const superCategory = searchParams.get("superCategory");
 
-		return Response.json(categories, { status: 200 });
+		const filter = {};
+		if (superCategory) {
+			filter.superCategory = superCategory;
+		}
+
+		const categories = await Category.find(filter);
+
+		return Response.json({ data: categories }, { status: 200 });
 	} catch (error) {
 		return Response.json({ message: error.message }, { status: 500 });
 	}
